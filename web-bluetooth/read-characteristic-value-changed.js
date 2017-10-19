@@ -1,12 +1,12 @@
 var bluetoothDevice;
-var batteryLevelCharacteristic;
+var valueandtimeCharacteristic;
 
 function onReadBatteryLevelButtonClick() {
   return (bluetoothDevice ? Promise.resolve() : requestDevice())
   .then(connectDeviceAndCacheCharacteristics)
   .then(_ => {
-    log('Reading Battery Level...');
-    return batteryLevelCharacteristic.readValue();
+    log('Reading Value and Time...');
+    return valueandtimeCharacteristic.readValue();
   })
   .catch(error => {
     log('Argh! ' + error);
@@ -18,7 +18,7 @@ function requestDevice() {
   return navigator.bluetooth.requestDevice({
    // filters: [...] <- Prefer filters to save energy & show relevant devices.
       acceptAllDevices: true,
-      optionalServices: ['battery_service']})
+      optionalServices: ['user_data']})
   .then(device => {
     bluetoothDevice = device;
     bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
@@ -26,23 +26,23 @@ function requestDevice() {
 }
 
 function connectDeviceAndCacheCharacteristics() {
-  if (bluetoothDevice.gatt.connected && batteryLevelCharacteristic) {
+  if (bluetoothDevice.gatt.connected && valueandtimeCharacteristic) {
     return Promise.resolve();
   }
 
   log('Connecting to GATT Server...');
   return bluetoothDevice.gatt.connect()
   .then(server => {
-    log('Getting Battery Service...');
-    return server.getPrimaryService('battery_service');
+    log('Getting User Data Service...');
+    return server.getPrimaryService('user_data');
   })
   .then(service => {
-    log('Getting Battery Level Characteristic...');
-    return service.getCharacteristic('battery_level');
+    log('Getting Value and Time Characteristic...');
+    return service.getCharacteristic(0x0001);
   })
   .then(characteristic => {
-    batteryLevelCharacteristic = characteristic;
-    batteryLevelCharacteristic.addEventListener('characteristicvaluechanged',
+    valueandtimeCharacteristic = characteristic;
+    valueandtimeCharacteristic.addEventListener('characteristicvaluechanged',
         handleBatteryLevelChanged);
     document.querySelector('#startNotifications').disabled = false;
     document.querySelector('#stopNotifications').disabled = true;
@@ -59,7 +59,7 @@ function handleBatteryLevelChanged(event) {
 
 function onStartNotificationsButtonClick() {
   log('Starting Battery Level Notifications...');
-  batteryLevelCharacteristic.startNotifications()
+  valueandtimeCharacteristic.startNotifications()
   .then(_ => {
     log('> Notifications started');
     document.querySelector('#startNotifications').disabled = true;
@@ -72,7 +72,7 @@ function onStartNotificationsButtonClick() {
 
 function onStopNotificationsButtonClick() {
   log('Stopping Battery Level Notifications...');
-  batteryLevelCharacteristic.stopNotifications()
+  valueandtimeCharacteristic.stopNotifications()
   .then(_ => {
     log('> Notifications stopped');
     document.querySelector('#startNotifications').disabled = false;
@@ -84,10 +84,10 @@ function onStopNotificationsButtonClick() {
 }
 
 function onResetButtonClick() {
-  if (batteryLevelCharacteristic) {
-    batteryLevelCharacteristic.removeEventListener('characteristicvaluechanged',
+  if (valueandtimeCharacteristic) {
+    valueandtimeCharacteristic.removeEventListener('characteristicvaluechanged',
         handleBatteryLevelChanged);
-    batteryLevelCharacteristic = null;
+    valueandtimeCharacteristic = null;
   }
   // Note that it doesn't disconnect device.
   bluetoothDevice = null;
